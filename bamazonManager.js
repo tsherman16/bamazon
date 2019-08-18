@@ -25,7 +25,7 @@ function start() {
         {
             type: "list",
             message: "Please select from the list of menu options below",
-            choices: ["View Products for Sale", "View Low Inventory", "Add to Inventory", "Add New Product"],
+            choices: ["View Products for Sale", "View Low Inventory", "Add to Inventory", "Add New Product", "Exit"],
             name: "optionMenu"
         }
     ]).then(function (answer) {
@@ -41,66 +41,80 @@ function start() {
                 break;
             case ("Add New Product"):
                 addProduct();
+                break;
+            case ("Exit"):
+                console.log("Thank you!")
+                connection.end();
         }
     })
 }
 
 function lowInventory() {
-    connection.query("SELECT * FROM products", function (err, results) {
+    connection.query("SELECT * FROM products WHERE stock_quantity < 50", function (err, data) {
         if (err) throw err;
-
-        var chosenItem;
-
-        for (i = 0; i < results.length; i++) {
-            if (results[i].stock_quantity < 50) {
-                chosenItem = results[i]
-            }
+        if (data.length === 0) {
+            console.log("\n");
+            console.log("No items in the inventory below 50!")
+            console.log("\n");
+            console.log("==================================================================")
+            console.log("\n");
+            start();
+        } else {
+            console.log("\n");
+            console.table(data);
+            console.log("\n");
+            start();
         }
-        console.log(chosenItem.product_name + " has " + chosenItem.stock_quantity + " left in stock!\n")
-        start();
     })
 }
 
 function addInventory() {
-    inquirer.prompt([
-        {
-            type: "number",
-            message: "Please enter the [item_id] of the product you would like to add inventory to:",
-            name: "inventory_id"
-        },
-        {
-            type: "number",
-            message: "How much of this item needs to be added?",
-            name: "inventory_quantity"
-        }
-    ]).then(function (answer) {
-        connection.query("SELECT * FROM products", function (err, results) {
-            if (err) throw err;
-
-            var chosenItem;
-
-            for (i = 0; i < results.length; i++) {
-                if (results[i].item_id === answer.inventory_id) {
-                    chosenItem = results[i]
-                }
+    connection.query("SELECT * FROM products", function (err, results) {
+        if (err) throw err;
+        // Log all products in a table format
+        console.log("\n\n");
+        console.table(results);
+        console.log("\n\n");
+        inquirer.prompt([
+            {
+                type: "number",
+                message: "Please enter the [item_id] of the product you would like to add inventory to:",
+                name: "inventory_id"
+            },
+            {
+                type: "number",
+                message: "How much of this item needs to be added?",
+                name: "inventory_quantity"
             }
-            connection.query(
-                "UPDATE products SET ? WHERE ?",
-                [
-                    {
-                        stock_quantity: (chosenItem.stock_quantity - parseInt(answer.inventory_quantity))
-                    },
-                    {
-                        item_id: chosenItem.item_id
+        ]).then(function (answer) {
+            connection.query("SELECT * FROM products", function (err, results) {
+                if (err) throw err;
+
+                var chosenItem;
+
+                for (i = 0; i < results.length; i++) {
+                    if (results[i].item_id === answer.inventory_id) {
+                        chosenItem = results[i]
                     }
-                ],
-                function (err, res) {
-                    if (err) throw err;
-                    console.log(res.affectedRows + " products updated!\n");
-                },
-                console.log("\nThe new total inventory for " + chosenItem.product_name + " is " + chosenItem.stock_quantity + ".\n")
-            );
-            start();
+                }
+                connection.query(
+                    "UPDATE products SET ? WHERE ?",
+                    [
+                        {
+                            stock_quantity: (chosenItem.stock_quantity + parseInt(answer.inventory_quantity))
+                        },
+                        {
+                            item_id: chosenItem.item_id
+                        }
+                    ],
+                    function (err, res) {
+                        if (err) throw err;
+                        console.log(res.affectedRows + " products updated!\n");
+                    },
+                    console.log("\nThe new total inventory for " + chosenItem.product_name + " is " + (chosenItem.stock_quantity + parseInt(answer.inventory_quantity)) + ".\n")
+                );
+                start();
+            })
         })
     })
 }
@@ -142,6 +156,7 @@ function addProduct() {
                 console.log(res.affectedRows + " product inserted!\n");
             }
         );
+        viewProducts();
         start();
     })
 }
@@ -151,7 +166,9 @@ function viewProducts() {
     connection.query("SELECT * FROM products", function (err, results) {
         if (err) throw err;
         // Log all products in a table format
-        console.table(results + "\n");
+        console.log("\n\n");
+        console.table(results);
+        console.log("\n\n");
+        start();
     })
-    start();
 }
