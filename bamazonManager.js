@@ -156,8 +156,14 @@ function addProduct() {
                 console.log(res.affectedRows + " product inserted!\n");
             }
         );
-        viewProducts();
-        start();
+        connection.query("SELECT * FROM products", function (err, results) {
+            if (err) throw err;
+            // Log all products in a table format
+            console.log("\n\n");
+            console.table(results);
+            console.log("\n\n");
+            start();
+        })
     })
 }
 
